@@ -1,8 +1,8 @@
 package classification;
 
 public class Config {
-  private static final String INPUT_PATH = "/home/tanguy/GitRep/deck-builder-toolkit/src/main/java";
-  private static final String OUTPUT_PATH = "/tmp/assi4/";
+  private static final String INPUT_PATH = "/Users/dzenansoftic/tub/deck-builder-toolkit/src/main/resources/";
+  private static final String OUTPUT_PATH = "/tmp/deck-builder-toolkit/";
 
   private Config() {}
 
@@ -24,10 +24,6 @@ public class Config {
 
   public static String pathToConditionals() {
     return OUTPUT_PATH + "conditionals";
-  }
-
-  public static String pathToRecommendations() {
-    return OUTPUT_PATH + "recommendations";
   }
 
   public static Long getSmoothingParameter() {

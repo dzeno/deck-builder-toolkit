@@ -6,7 +6,7 @@ package FrequentItemSets;
  */
 public class Config {
 
-    private static final String INPUT_PATH = "/Users/dzenansoftic/tub/deck-builder-toolkit/src/resources/";
+    private static final String INPUT_PATH = "/Users/dzenansoftic/tub/deck-builder-toolkit/src/main/resources/";
     private static final String OUTPUT_PATH = "/tmp/deck-builder-toolkit/";
 
     private Config() {}
