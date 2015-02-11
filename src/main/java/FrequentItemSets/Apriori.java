@@ -37,12 +37,61 @@ public class Apriori {
         // tuple3<CardsSet, Support, VictoryRatio>
         IterativeDataSet<Tuple3<String, Double, Double>> candidates = labeledTerms.distinct(3).project(3, 4, 2).types(String.class, Double.class, Double.class).iterate(3);
 
+		DataSet<Tuple3<String, Double, Double>> genereatedCandidates = candidates
+                // generating candidates : all combinations of the previous generation and the whole vocabulary
+                .cross(vocabulary).with(new GenerateCandidates())
+                // removing all duplicated item sets
+                .distinct(0)
+                // removing sets with duplicated values inside
+                .filter(new RemoveDuplicates())
+                // generating support and victoryRatio of every candidates for every DeckList
+                .map(new CandidatesToDeck()).withBroadcastSet(labeledTerms, "decks")
+                // removing sets not frequent enough (config.getSupportThreshold)
+                .filter(new SynergyFilter());
+
+        DataSet<Tuple3<String, Double, Double>> count = candidates.closeWith(genereatedCandidates);
+
+        count.writeAsCsv(Config.pathToFrequentSets(), "\n", "\t", org.apache.flink.core.fs.FileSystem.WriteMode.OVERWRITE);	
+			
         env.execute();
     }
 
+	public static class DataReader implements FlatMapFunction<String, Tuple5<String, String, Double, String, Double>> {
+        @Override
+        public void flatMap(String line, Collector<Tuple5<String, String, Double, String, Double>> collector) throws Exception {
+            try {
+                String[] tokens = line.split("\t");
+                String player_name = tokens[0];
+                String[] scores = tokens[1].split(",");
+                String event = tokens[2];
+                String arch = tokens[3];
+                String[] terms = tokens[4].split("&&");
+
+                Double victories = Double.parseDouble(scores[0]);
+                Double defeats = Double.parseDouble(scores[1]);
+                Double score = (victories+defeats != 0)? (victories / (victories + defeats)) : 0.5;
+
+                //Broadcasting only the decks lists labeled with the archetype of choice
+                if (arch.equals(Config.getArchetype())) {
+                    String[] card;
+                    String name;
+                    Double nb;
+                    for (String term : terms) {
+                        card = term.split("\\$\\$");
+                        name = card[1];
+                        nb = Double.parseDouble(card[0]);
+                        collector.collect(new Tuple5<String, String, Double, String, Double>(arch, player_name + event, score, name, nb));
+                    }
+                }
+            }
+            catch(Exception e){
+                System.out.println("warning, format problem: "+line);
+            }
+        }
+    }
 
     public static class GenerateCandidates implements CrossFunction<Tuple3<String, Double, Double>, Tuple1<String>, Tuple3<String, Double, Double>> {
-        @Override
+	    @Override
         public Tuple3<String, Double, Double> cross(Tuple3<String, Double, Double> line, Tuple1<String> voc) throws Exception {
 
             String tokens[] = (line.f0+"&&"+voc.f0).split("&&");
@@ -71,6 +120,37 @@ public class Apriori {
                 deckLists.get(key).add(deck.f3);
             }
         }
+		
+		/**
+         * CandidatesToDeck will generate the support and victoryRatio of every candidate ItemSet for every DeckList
+         *
+         * @param line: Tuple3<frequentItemSet:String, ItemSetSupport:Double, ItemSetVictoryRatio:Double>
+         * @return result: Tuple3<frequentItemSet:String, ItemSetSupport:Double, ItemSetVictoryRatio:Double>
+         * @throws Exception
+         */
+        @Override
+        public Tuple3<String, Double, Double> map(Tuple3<String, Double, Double> line) throws Exception {
+            String tokens[] = line.f0.split("&&");
+            Double support = 0.0;
+            Double victoryRatio = 0.0;
+
+            int iteration = getIterationRuntimeContext().getSuperstepNumber();
+
+            for(Tuple3<String, String, Double> key : deckLists.keySet()){
+                boolean contains = true;
+                for(String token : tokens){
+                    contains = contains && deckLists.get(key).contains(token);
+                }
+                if (iteration == 3 && contains) {
+                        support ++;
+                        victoryRatio += key.f2;
+                }
+                else{
+                    support += contains ? 1 : 0;
+                }
+            }
+            return new Tuple3<String, Double, Double>(line.f0, support/deckLists.size(), victoryRatio/support);
+        }
     }
 
     private static class SynergyFilter implements FilterFunction<Tuple3<String, Double, Double>> {
@@ -79,5 +159,12 @@ public class Apriori {
             return count.f1 >= Config.getSupportThreshold();
         }
     }
-
+	
+	private static class RemoveDuplicates implements FilterFunction<Tuple3<String, Double, Double>> {
+        @Override
+        public boolean filter(Tuple3<String, Double, Double> line) throws Exception {
+            String[] tokens = line.f0.split("&&");
+            return tokens.length == (new HashSet<String>(Arrays.asList(tokens)).size());
+        }
+    }
 }
