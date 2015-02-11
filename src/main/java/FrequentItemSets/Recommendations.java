@@ -1,8 +1,5 @@
 package FrequentItemSets;
 
-import com.google.common.collect.Maps;
-import org.apache.avro.Schema;
-import org.apache.commons.lang.StringUtils;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.RichMapFunction;
@@ -13,8 +10,6 @@ import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.tuple.*;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
-
-import java.lang.reflect.Array;
 import java.util.*;
 
 /**
