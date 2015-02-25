@@ -17,7 +17,7 @@ public class Training {
 
         DataSource<String> input = env.readTextFile(Config.pathToTrainingSet());
 
-        // read input with df-cut
+        // read input
         DataSet<Tuple3<String, String, Long>> labeledTerms = input.flatMap(new DataReader());
 
         // conditional counter per word per label
@@ -55,7 +55,7 @@ public class Training {
             try {
                 String[] tokens = line.split("\t");
                 String player_name = tokens[0];
-                String score = tokens[1];
+                String eventResult = tokens[1];
                 String event = tokens[2];
                 String arch = tokens[3];
                 String[] terms = tokens[4].split("&&");

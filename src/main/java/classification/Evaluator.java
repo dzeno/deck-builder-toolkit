@@ -18,8 +18,11 @@ public class Evaluator {
 
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
+		// read output from classification
         DataSource<String> predictions = env.readTextFile(Config.pathToOutput());
+		//	restructure classification results
         DataSet<Tuple3<String, String, Double>> classifiedDataPoints = predictions.map(new ConditionalReader());
+		// evaluate predictions accuracy
         DataSet<String> evaluation = classifiedDataPoints.reduceGroup(new Evaluate());
 
         evaluation.print();
